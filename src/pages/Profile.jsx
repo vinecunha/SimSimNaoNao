@@ -1,18 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { User, Save, ArrowLeft, Loader2 } from 'lucide-react';
+import { Save, ArrowLeft, Loader2, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import ProfileLogoUpload from '../components/ProfileLogoUpload';
 
 export default function Profile() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [userEmail, setUserEmail] = useState('');
   const [perfil, setPerfil] = useState({
     nome_completo: '',
     documento: '',
     email_comercial: '',
     telefone: '',
-    endereco_completo: ''
+    endereco_completo: '',
+    logo_url: ''
   });
 
   const maskDoc = (value) => {
@@ -32,6 +35,7 @@ export default function Profile() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) { navigate('/login'); return; }
+        setUserEmail(user.email);
         const { data, error } = await supabase
           .from('perfis')
           .select('*')
@@ -52,11 +56,16 @@ export default function Profile() {
       const { data: { user } } = await supabase.auth.getUser();
       const { error } = await supabase.from('perfis').upsert({
         id: user.id,
-        ...perfil,
+        nome_completo: perfil.nome_completo,
+        documento: perfil.documento,
+        email_comercial: perfil.email_comercial,
+        telefone: perfil.telefone,
+        endereco_completo: perfil.endereco_completo,
+        logo_url: perfil.logo_url,
         updated_at: new Date().toISOString(),
       });
       if (error) throw error;
-      alert("Perfil Premium atualizado!");
+      alert("Perfil atualizado com sucesso!");
       navigate('/dashboard');
     } catch (error) {
       alert("Erro ao salvar: " + error.message);
@@ -80,19 +89,36 @@ export default function Profile() {
         </button>
 
         <div className="bg-white border-[4px] border-black rounded-[40px] p-10 shadow-[12px_12px_0px_0px_black]">
-          <h2 className="text-4xl font-black uppercase italic mb-10 flex items-center gap-4 tracking-tighter leading-none">
-            <div className="bg-orange-500 p-2 rounded-xl text-white shadow-[3px_3px_0px_0px_black]">
-              <User size={32} />
+          
+          <div className="flex flex-col md:flex-row items-center gap-8 mb-10 border-b-[3px] border-black pb-10">
+            <ProfileLogoUpload 
+              perfil={perfil} 
+              onUploadSuccess={(url) => setPerfil({...perfil, logo_url: url})}
+              onRemoveLogo={() => setPerfil({...perfil, logo_url: ''})}
+            />
+            
+            <div className="text-center md:text-left">
+              <h2 className="text-4xl font-black uppercase italic tracking-tighter leading-none mb-2">
+                Dados do Emissor
+              </h2>
+              <p className="text-[10px] font-black text-orange-500 uppercase tracking-widest leading-none">Configurações de Conta</p>
             </div>
-            Dados do Emissor
-          </h2>
+          </div>
 
           <form onSubmit={handleSave} className="space-y-6">
             <div className="space-y-5">
               <div>
+                <label className="block text-[10px] font-black uppercase mb-2 ml-2 text-gray-400 flex items-center gap-1.5">
+                   <Lock size={10} /> E-mail de Cadastro (Protegido)
+                </label>
+                <input readOnly className="w-full p-5 bg-gray-100 border-[3px] border-black rounded-2xl font-bold text-gray-500 outline-none cursor-not-allowed opacity-70" value={userEmail} />
+              </div>
+
+              <div>
                 <label className="block text-[10px] font-black uppercase mb-2 ml-2 text-gray-400">Nome Completo ou Razão Social</label>
                 <input required placeholder="COMO APARECERÁ NO CONTRATO" className="w-full p-5 bg-gray-50 border-[3px] border-black rounded-2xl font-bold outline-none focus:bg-orange-50 focus:border-orange-500 transition-all uppercase placeholder:text-gray-300" value={perfil.nome_completo} onChange={e => setPerfil({...perfil, nome_completo: e.target.value.toUpperCase()})} />
               </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
                   <label className="block text-[10px] font-black uppercase mb-2 ml-2 text-gray-400">CPF ou CNPJ</label>
@@ -111,7 +137,7 @@ export default function Profile() {
 
             <button type="submit" disabled={saving} className="w-full bg-black text-white py-6 rounded-2xl font-black uppercase italic text-xl shadow-[0px_6px_0px_0px_#f97316] hover:translate-y-1 active:shadow-none transition-all flex items-center justify-center gap-3 disabled:opacity-50">
               {saving ? <Loader2 className="animate-spin" /> : <Save size={24} />}
-              {saving ? 'SALVANDO...' : 'ATUALIZAR DADOS ELITE'}
+              {saving ? 'SALVANDO...' : 'ATUALIZAR PERFIL'}
             </button>
           </form>
         </div>

@@ -3,7 +3,8 @@ import { supabase } from '../lib/supabase';
 import ContractForm from '../components/ContractForm';
 import ContractCanvas from '../components/ContractCanvas';
 import UpsellSelection from '../components/UpsellSelection';
-import Navbar from '../components/Navbar'; // Importação do componente ajustado
+import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
 import { Loader2, CheckCircle, Copy, Check, LayoutDashboard, Zap, Star, Edit3 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -124,11 +125,10 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-[#fcfcfc] text-left">
-      {/* Navbar Unificada e Responsiva */}
+    <div className="min-h-screen bg-[#fcfcfc] text-left flex flex-col">
       <Navbar />
 
-      <main className="max-w-7xl mx-auto px-6 py-6 md:py-12">
+      <main className="flex-grow max-w-7xl mx-auto px-6 py-6 md:py-12">
         {loading && (
           <div className="fixed inset-0 bg-white/80 backdrop-blur-sm z-50 flex items-center justify-center text-black">
             <div className="flex flex-col items-center gap-4">
@@ -218,6 +218,8 @@ export default function Home() {
           </div>
         )}
       </main>
+
+      <Footer />
     </div>
   );
 }
