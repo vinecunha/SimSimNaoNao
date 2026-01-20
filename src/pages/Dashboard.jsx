@@ -3,8 +3,8 @@ import { supabase } from '../lib/supabase';
 import { generatePDF } from '../utils/pdfGenerator';
 import { 
   ExternalLink, Download, Clock, CheckCircle, AlertCircle, 
-  Copy, Check, Search, Plus, UserCircle, Settings, LogOut, 
-  ChevronLeft, ChevronRight 
+  Copy, Check, Search, UserCircle, Settings, LogOut, 
+  ChevronLeft, ChevronRight, Calendar, DollarSign
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
@@ -18,9 +18,8 @@ export default function Dashboard() {
   const [filter, setFilter] = useState('');
   const navigate = useNavigate();
 
-  // Estados de Paginação
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(12);
 
   useEffect(() => {
     fetchDadosIniciais();
@@ -61,131 +60,166 @@ export default function Dashboard() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const getStatusBadge = (acordo) => {
+  const getStatusStyle = (acordo) => {
     const trintaDias = 30 * 24 * 60 * 60 * 1000;
     const expirado = (new Date() - new Date(acordo.created_at)) > trintaDias && !acordo.assinado_em;
-    if (acordo.assinado_em) return <span className="text-[9px] font-black uppercase text-green-600 bg-green-50 px-2 py-0.5 rounded border border-green-200 flex items-center gap-1"><CheckCircle size={10} /> Assinado</span>;
-    if (expirado) return <span className="text-[9px] font-black uppercase text-red-600 bg-red-50 px-2 py-0.5 rounded border border-red-200 flex items-center gap-1"><AlertCircle size={10} /> Expirado</span>;
-    return <span className="text-[9px] font-black uppercase text-orange-600 bg-orange-50 px-2 py-0.5 rounded border border-orange-200 flex items-center gap-1"><Clock size={10} /> Pendente</span>;
+    
+    if (acordo.assinado_em) return {
+      border: 'border-green-500',
+      shadow: 'shadow-[6px_6px_0px_0px_rgba(34,197,94,0.2)]',
+      text: 'text-green-600',
+      bg: 'bg-green-50',
+      label: 'Assinado'
+    };
+    if (expirado) return {
+      border: 'border-red-500',
+      shadow: 'shadow-[6px_6px_0px_0px_rgba(239,68,68,0.2)]',
+      text: 'text-red-600',
+      bg: 'bg-red-50',
+      label: 'Expirado'
+    };
+    return {
+      border: 'border-orange-500',
+      shadow: 'shadow-[6px_6px_0px_0px_rgba(249,115,22,0.2)]',
+      text: 'text-orange-600',
+      bg: 'bg-orange-50',
+      label: 'Pendente'
+    };
   };
 
-  // Lógica de Filtro e Paginação
   const filteredAcordos = acordos.filter(a => 
     (a.cliente_nome?.toLowerCase() || '').includes(filter.toLowerCase()) ||
     (a.servico?.toLowerCase() || '').includes(filter.toLowerCase())
   );
 
   const totalPages = Math.ceil(filteredAcordos.length / itemsPerPage);
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filteredAcordos.slice(indexOfFirstItem, indexOfLastItem);
+  const currentItems = filteredAcordos.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-  const paginate = (pageNumber) => setCurrentPage(pageNumber);
-
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-[#fcfcfc] font-black italic uppercase">Carregando Painel...</div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-[#fcfcfc] font-black italic uppercase">Carregando...</div>;
 
   return (
-    <div className="min-h-screen bg-[#fcfcfc] text-left text-black">
+    <div className="min-h-screen bg-[#fcfcfc] text-left text-black pb-20 font-sans">
       <Navbar />
       
-      <div className="max-w-6xl mx-auto p-4 md:p-8">
-        {/* HEADER ADMINISTRATIVO */}
-        <div className="bg-white border-[3px] border-black rounded-[32px] p-5 md:p-6 mb-8 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-[6px_6px_0px_0px_black]">
-          <div className="flex items-center gap-3 md:gap-4 w-full sm:w-auto">
-            <div className="w-12 h-12 md:w-16 md:h-16 bg-orange-100 rounded-2xl border-[3px] border-black flex items-center justify-center text-orange-600 shadow-[3px_3px_0px_0px_black] shrink-0">
-              <UserCircle size={32} className="md:w-10 md:h-10" />
+      <div className="max-w-7xl mx-auto p-4 md:p-8">
+        
+        {/* HEADER LIMPO E PROFISSIONAL */}
+        <div className="bg-white border-[3px] border-black rounded-[24px] p-6 mb-10 flex flex-col md:flex-row items-center justify-between gap-6 shadow-[6px_6px_0px_0px_black]">
+          <div className="flex items-center gap-5 w-full md:w-auto">
+            <div className="w-16 h-16 bg-gray-50 border-[3px] border-black rounded-2xl flex items-center justify-center shadow-[3px_3px_0px_0px_black] shrink-0">
+              <UserCircle size={36} />
             </div>
-            <div className="min-w-0">
-              <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Administrador</p>
-              <h3 className="text-lg md:text-2xl font-black uppercase italic leading-none truncate">{perfil?.nome_completo || 'Minhas Empresas'}</h3>
+            <div className="min-w-0 text-left">
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Contratos Ativos</p>
+              <h3 className="text-xl md:text-3xl font-black uppercase italic leading-none truncate">{perfil?.nome_completo || 'Minhas Empresas'}</h3>
             </div>
           </div>
           
-          <div className="flex gap-2 w-full sm:w-auto">
-            <button onClick={() => navigate('/perfil')} className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-3 bg-gray-100 border-[3px] border-black rounded-xl font-black text-[10px] uppercase shadow-[2px_2px_0px_0px_black] transition-all"><Settings size={14} /> Perfil</button>
-            <button onClick={handleLogout} className="p-3 text-red-600 border-[3px] border-transparent hover:border-red-200 rounded-xl transition-all"><LogOut size={20} /></button>
+          <div className="flex gap-2 w-full md:w-auto">
+            <button onClick={() => navigate('/perfil')} className="flex-1 md:flex-initial flex items-center justify-center gap-2 px-5 py-3 bg-white border-[3px] border-black rounded-xl font-black text-[11px] uppercase shadow-[3px_3px_0px_0px_black] hover:bg-gray-50 transition-all active:translate-y-0.5 active:shadow-none"><Settings size={14} /> Perfil</button>
+            <button onClick={handleLogout} className="p-3 text-red-600 border-[3px] border-transparent hover:border-red-100 rounded-xl transition-all"><LogOut size={22} /></button>
           </div>
         </div>
 
-        {/* BUSCA E SELETOR DE PÁGINAS */}
-        <div className="flex flex-col md:flex-row gap-4 mb-8">
-          <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+        {/* BUSCA COM FOCO EM UX */}
+        <div className="flex flex-col md:flex-row gap-4 mb-10">
+          <div className="relative flex-1 group">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
             <input 
               type="text" 
-              placeholder="FILTRAR CONTRATOS..." 
-              className="pl-12 pr-6 py-4 bg-white border-[3px] border-black rounded-2xl outline-none font-bold text-[10px] w-full shadow-[4px_4px_0px_0px_black]" 
+              placeholder="PESQUISAR CLIENTE OU SERVIÇO..." 
+              className="pl-12 pr-6 py-4 bg-white border-[3px] border-black rounded-xl outline-none font-bold text-[12px] w-full shadow-[4px_4px_0px_0px_black] focus:shadow-orange-500 transition-all" 
               onChange={(e) => { setFilter(e.target.value); setCurrentPage(1); }} 
             />
           </div>
-          <div className="flex items-center gap-2 bg-white border-[3px] border-black rounded-2xl px-4 py-2 shadow-[4px_4px_0px_0px_black]">
-            <span className="text-[9px] font-black uppercase text-gray-400">Ver:</span>
-            {[10, 20, 50].map((num) => (
-              <button
-                key={num}
-                onClick={() => { setItemsPerPage(num); setCurrentPage(1); }}
-                className={`text-[10px] font-black px-2 py-1 rounded ${itemsPerPage === num ? 'bg-black text-white' : 'text-black hover:bg-gray-100'}`}
-              >
-                {num}
-              </button>
+          <div className="flex items-center gap-2 bg-white border-[3px] border-black rounded-xl px-4 shadow-[4px_4px_0px_0px_black]">
+            <span className="text-[10px] font-black text-gray-400 uppercase">Ver:</span>
+            {[12, 24].map((num) => (
+              <button key={num} onClick={() => { setItemsPerPage(num); setCurrentPage(1); }} className={`px-3 py-1 font-black text-[11px] rounded ${itemsPerPage === num ? 'bg-black text-white' : 'hover:bg-gray-100'}`}>{num}</button>
             ))}
           </div>
         </div>
 
-        {/* GRID DE CARDS */}
-        <div className="grid gap-4">
-          {currentItems.map((acordo) => (
-            <div key={acordo.id} className="bg-white border-[3px] border-black rounded-[24px] p-4 flex flex-col lg:flex-row items-center justify-between gap-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.05)]">
-              <div className="flex items-center gap-4 w-full lg:w-1/3">
-                <ContractLogoUpload acordo={acordo} onUploadSuccess={handleUpdateLogoState} onRemoveLogo={handleRemoveLogo} />
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2 mb-1">
-                    <p className="font-black uppercase text-sm truncate">{acordo.cliente_nome || 'Sem Nome'}</p>
-                    {getStatusBadge(acordo)}
+        {/* GRID DE CARDS EQUILIBRADO */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {currentItems.map((acordo) => {
+            const status = getStatusStyle(acordo);
+            return (
+              <div key={acordo.id} className={`group bg-white border-[3px] border-black rounded-[24px] p-5 flex flex-col shadow-[6px_6px_0px_0px_black] hover:translate-y-[-4px] transition-all duration-300 relative`}>
+                
+                {/* Indicador sutil de status (Borda colorida) */}
+                <div className={`absolute top-4 right-4 flex items-center gap-1.5 px-2 py-0.5 rounded-lg border-2 border-black ${status.bg} ${status.text}`}>
+                  <span className="text-[8px] font-black uppercase italic tracking-tighter">{status.label}</span>
+                </div>
+
+                <div className="mb-6">
+                  <ContractLogoUpload acordo={acordo} onUploadSuccess={handleUpdateLogoState} onRemoveLogo={handleRemoveLogo} />
+                </div>
+
+                <div className="flex-1 mb-6 text-left">
+                  <h4 className="font-black uppercase text-base leading-tight mb-1 truncate group-hover:text-orange-600 transition-colors">
+                    {acordo.cliente_nome || 'Cliente não identificado'}
+                  </h4>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase italic truncate">{acordo.servico}</p>
+                </div>
+
+                {/* Info Box - Cinza Sóbrio */}
+                <div className="grid grid-cols-2 border-2 border-black rounded-xl mb-6 divide-x-2 divide-black bg-gray-50 overflow-hidden">
+                  <div className="p-2 flex items-center gap-2">
+                    <DollarSign size={14} className="text-gray-400" />
+                    <p className="font-black text-[10px] italic truncate">{acordo.valor}</p>
                   </div>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase truncate">{acordo.servico}</p>
+                  <div className="p-2 flex items-center gap-2">
+                    <Calendar size={14} className="text-gray-400" />
+                    <p className="font-black text-[10px] italic truncate">{new Date(acordo.created_at).toLocaleDateString('pt-BR')}</p>
+                  </div>
                 </div>
-              </div>
 
-              <div className="flex justify-between lg:justify-center items-center gap-8 w-full lg:w-1/3 border-y lg:border-y-0 lg:border-x border-dashed border-gray-200 py-3 lg:py-0 px-4">
-                <div className="text-center">
-                  <p className="text-[8px] font-black text-gray-400 uppercase">Valor</p>
-                  <p className="font-black text-xs italic">{acordo.valor}</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-[8px] font-black text-gray-400 uppercase">Data</p>
-                  <p className="font-black text-xs italic">{new Date(acordo.created_at).toLocaleDateString('pt-BR')}</p>
+                {/* Botões - Apenas o Copy ganha cor ao interagir */}
+                <div className="grid grid-cols-3 gap-2">
+                  <button 
+                    onClick={() => copyLink(acordo.id)} 
+                    className={`flex items-center justify-center py-3 rounded-xl border-[3px] border-black shadow-[2px_2px_0px_0px_black] active:shadow-none transition-all ${copiedId === acordo.id ? 'bg-green-500 text-white' : 'bg-white hover:bg-orange-50'}`}
+                  >
+                    {copiedId === acordo.id ? <Check size={18}/> : <Copy size={18}/>}
+                  </button>
+                  <button 
+                    onClick={() => generatePDF(acordo)} 
+                    className="flex items-center justify-center py-3 bg-black text-white rounded-xl border-[3px] border-black shadow-[2px_2px_0px_0px_black] hover:bg-gray-800 active:shadow-none transition-all"
+                  >
+                    <Download size={18} />
+                  </button>
+                  <a 
+                    href={`/assinar/${acordo.id}`} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="flex items-center justify-center py-3 bg-white border-[3px] border-black rounded-xl shadow-[2px_2px_0px_0px_black] hover:bg-gray-50 active:shadow-none transition-all"
+                  >
+                    <ExternalLink size={18} />
+                  </a>
                 </div>
               </div>
-
-              <div className="flex items-center gap-2 w-full lg:w-auto">
-                <button onClick={() => copyLink(acordo.id)} className={`flex-1 flex items-center justify-center gap-2 px-3 py-3 rounded-xl border-[3px] border-black font-black text-[9px] uppercase shadow-[2px_2px_0px_0px_black] transition-all ${copiedId === acordo.id ? 'bg-green-500 text-white' : 'bg-white'}`}>
-                  {copiedId === acordo.id ? <Check size={14}/> : <Copy size={14}/>} Link
-                </button>
-                <button onClick={() => generatePDF(acordo)} className="flex-1 flex items-center justify-center gap-2 px-3 py-3 bg-black text-white rounded-xl border-[3px] border-black font-black text-[9px] uppercase shadow-[2px_2px_0px_0px_black] transition-all hover:bg-orange-600">
-                  <Download size={14} /> PDF
-                </button>
-                <a href={`/assinar/${acordo.id}`} target="_blank" rel="noopener noreferrer" className="p-3 bg-gray-50 border-[3px] border-black rounded-xl shadow-[2px_2px_0px_0px_black]"><ExternalLink size={16} /></a>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
-        {/* CONTROLES DE PAGINAÇÃO */}
+        {/* PAGINAÇÃO */}
         {totalPages > 1 && (
-          <div className="mt-8 flex items-center justify-center gap-4">
+          <div className="mt-12 flex items-center justify-center gap-4">
             <button 
-              onClick={() => paginate(currentPage - 1)} 
+              onClick={() => { paginate(currentPage - 1); window.scrollTo(0,0); }} 
               disabled={currentPage === 1}
-              className="p-2 border-[3px] border-black rounded-xl disabled:opacity-30 disabled:cursor-not-allowed bg-white shadow-[2px_2px_0px_0px_black] active:translate-y-0.5 transition-all"
+              className="p-3 border-[3px] border-black rounded-xl disabled:opacity-30 bg-white shadow-[3px_3px_0px_0px_black] transition-all"
             >
               <ChevronLeft size={20} />
             </button>
-            <span className="font-black text-sm uppercase italic">Página {currentPage} de {totalPages}</span>
+            <div className="font-black text-xs uppercase italic bg-white border-[3px] border-black px-5 py-2 rounded-xl shadow-[3px_3px_0px_0px_black]">
+              Página {currentPage} de {totalPages}
+            </div>
             <button 
-              onClick={() => paginate(currentPage + 1)} 
+              onClick={() => { paginate(currentPage + 1); window.scrollTo(0,0); }} 
               disabled={currentPage === totalPages}
-              className="p-2 border-[3px] border-black rounded-xl disabled:opacity-30 disabled:cursor-not-allowed bg-white shadow-[2px_2px_0px_0px_black] active:translate-y-0.5 transition-all"
+              className="p-3 border-[3px] border-black rounded-xl disabled:opacity-30 bg-white shadow-[3px_3px_0px_0px_black] transition-all"
             >
               <ChevronRight size={20} />
             </button>

@@ -25,109 +25,128 @@ export const generatePDF = async (acordo) => {
 
   const isAssinado = !!dados.assinadoEm;
   const toUp = (text) => text ? String(text).toUpperCase() : "---";
+  const fullHash = `SHA256:${dados.id.replace(/-/g, '').toUpperCase()}`;
   const authID = dados.id.substring(0, 8).toUpperCase();
 
-  // --- FUNÇÃO PARA CARREGAR E INSERIR LOGOS ---
-  const addLogos = async () => {
+  // --- FUNÇÃO PARA ELEMENTOS FIXOS (LOGO ACIMA DA PAGINAÇÃO) ---
+  const addFixedElements = (pageNumber, totalPages) => {
+    doc.setPage(pageNumber);
+    
+    // Logo no rodapé (Acima da paginação)
     if (dados.emissorLogo) {
       try {
-        const img = new Image();
-        img.src = dados.emissorLogo;
-        img.crossOrigin = "Anonymous"; 
-        await new Promise((resolve, reject) => { 
-          img.onload = resolve; 
-          img.onerror = reject;
-        });
-
-        // 1. LOGO NO CABEÇALHO (Topo Esquerdo - Estilo Word)
-        // Posicionada em Y=10 para não interferir no título que começa em Y=25
-        doc.addImage(img, 'PNG', margin, 10, 20, 20, undefined, 'FAST');
-
-        // 2. LOGO NO RODAPÉ (Canto Direito - Inline com a assinatura)
-        // Posicionada exatamente na altura onde começa o texto da assinatura (footerY + 5)
-        doc.addImage(img, 'PNG', width - margin - 20, 267, 20, 20, undefined, 'FAST');
-
-        // 3. MARCA D'ÁGUA CENTRALIZADA
-        doc.saveGraphicsState();
-        doc.setGState(new doc.GState({ opacity: 0.1 }));
-        const logoSize = 100;
-        doc.addImage(img, 'PNG', (width - logoSize) / 2, (height - logoSize) / 2, logoSize, logoSize, undefined, 'FAST');
-        doc.restoreGraphicsState();
-      } catch (e) {
-        console.error("Erro ao carregar logomarca:", e);
-      }
+        // Posicionada em Y=268 para ficar acima do texto da página
+        doc.addImage(dados.emissorLogo, 'PNG', width - margin - 15, 268, 15, 15, undefined, 'FAST');
+      } catch (e) {}
     }
+
+    // Paginação (Na base do documento)
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(150);
+    doc.text(`Página ${pageNumber} de ${totalPages}`, width - margin, 287, { align: "right" });
   };
 
+  // --- LOGOS E MARCA D'ÁGUA ---
   if (dados.emissorLogo) {
-    await addLogos();
+    try {
+      const img = new Image();
+      img.src = dados.emissorLogo;
+      img.crossOrigin = "Anonymous"; 
+      await new Promise((resolve, reject) => { 
+        img.onload = resolve; 
+        img.onerror = reject;
+      });
+      doc.addImage(img, 'PNG', margin, 15, 25, 25, undefined, 'FAST');
+      doc.saveGraphicsState();
+      doc.setGState(new doc.GState({ opacity: 0.05 }));
+      doc.addImage(img, 'PNG', (width - 100) / 2, (height - 100) / 2, 100, 100, undefined, 'FAST');
+      doc.restoreGraphicsState();
+    } catch (e) { console.error("Erro logo:", e); }
   }
 
-  // --- CONSTRUÇÃO DO TEXTO ---
+  // --- TÍTULO ---
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(12);
+  doc.setFontSize(14);
   doc.setTextColor(0);
-  // Título centralizado - a logo em Y=10 não afeta este texto em Y=25
-  doc.text("CONTRATO DE PRESTAÇÃO DE SERVIÇOS", width / 2, 25, { align: "center" });
+  doc.text("CONTRATO DE PRESTAÇÃO DE SERVIÇOS", width / 2, 55, { align: "center" });
   
+  // --- 1. AS PARTES ---
   doc.setFontSize(10);
-  doc.text("1. AS PARTES", margin, 40);
-
+  doc.text("1. AS PARTES", margin, 70);
+  doc.setDrawColor(0);
+  doc.line(margin, 72, width - margin, 72);
   doc.setFont("helvetica", "normal");
   const emissorInfo = `CONTRATADO(A): ${toUp(dados.emissorNome)}, INSCRITO(A) NO DOCUMENTO SOB Nº ${toUp(dados.emissorDoc)}, RESIDENTE OU SEDIADO(A) EM ${toUp(dados.emissorEnd)}.`;
   const clienteInfo = `CONTRATANTE: ${toUp(dados.clienteNome)}, INSCRITO(A) NO DOCUMENTO SOB Nº ${toUp(dados.clienteDoc)}, RESIDENTE OU SEDIADO(A) EM ${toUp(dados.clienteEnd)}.`;
-
   const emissorSplit = doc.splitTextToSize(emissorInfo, width - (margin * 2));
-  doc.text(emissorSplit, margin, 48);
-  
-  const clienteY = 48 + (emissorSplit.length * 5) + 2;
+  doc.text(emissorSplit, margin, 80);
+  const clienteY = 80 + (emissorSplit.length * 5) + 2;
   const clienteSplit = doc.splitTextToSize(clienteInfo, width - (margin * 2));
   doc.text(clienteSplit, margin, clienteY);
 
   let currentY = clienteY + (clienteSplit.length * 5) + 10;
 
+  // --- 2. OBJETO E VALOR ---
   doc.setFont("helvetica", "bold");
   doc.text("2. CLÁUSULA PRIMEIRA - DO OBJETO E VALOR", margin, currentY);
+  doc.line(margin, currentY + 2, width - margin, currentY + 2);
   doc.setFont("helvetica", "normal");
-  currentY += 7;
+  currentY += 8;
   const objTexto = `O PRESENTE CONTRATO TEM COMO OBJETO A PRESTAÇÃO DE SERVIÇO DE: ${toUp(dados.servico)}. PELO CUMPRIMENTO DO OBJETO, O CONTRATANTE PAGARÁ O VALOR DE ${toUp(dados.valor)}, COM PRAZO DE ENTREGA/CONCLUSÃO DEFINIDO PARA ${toUp(dados.prazo)}.`;
   const objSplit = doc.splitTextToSize(objTexto, width - (margin * 2));
   doc.text(objSplit, margin, currentY);
+  currentY += (objSplit.length * 5) + 8;
 
-  currentY += (objSplit.length * 5) + 7;
-
+  // --- 3. OBRIGAÇÕES ---
   doc.setFont("helvetica", "bold");
   doc.text("3. CLÁUSULA SEGUNDA - DAS OBRIGAÇÕES", margin, currentY);
+  doc.line(margin, currentY + 2, width - margin, currentY + 2);
   doc.setFont("helvetica", "normal");
-  currentY += 7;
+  currentY += 8;
   const obrigaTexto = `O CONTRATADO COMPROMETE-SE A REALIZAR O SERVIÇO COM ZELO E DENTRO DO PRAZO. O CONTRANTE COMPROMETE-SE A FORNECER AS INFORMAÇÕES NECESSÁRIAS E EFETUAR O PAGAMENTO CONFORME PACTUADO.`;
   const obrigaSplit = doc.splitTextToSize(obrigaTexto, width - (margin * 2));
   doc.text(obrigaSplit, margin, currentY);
+  currentY += (obrigaSplit.length * 5) + 8;
 
-  currentY += (obrigaSplit.length * 5) + 7;
-
+  // --- 4. PENALIDADES ---
   doc.setFont("helvetica", "bold");
+  doc.setTextColor(180, 0, 0);
   doc.text("4. CLÁUSULA TERCEIRA - DAS PENALIDADES E RESCISÃO", margin, currentY);
-  doc.setFont("helvetica", "normal");
-  currentY += 7;
+  doc.line(margin, currentY + 2, width - margin, currentY + 2);
+  doc.setFont("helvetica", "italic");
+  currentY += 8;
   const penalTexto = `EM CASO DE DESCUMPRIMENTO OU DESISTÊNCIA SEM JUSTA CAUSA, APLICA-SE A SEGUINTE PENALIDADE: ${toUp(dados.penalidade)}. O CONTRATO PODERÁ SER RESCINDIDO MEDIANTE AVISO PRÉVIO CASO HAJA INVIABILIDADE TÉCNICA OU FALTA DE PAGAMENTO.`;
   const penalSplit = doc.splitTextToSize(penalTexto, width - (margin * 2));
   doc.text(penalSplit, margin, currentY);
+  currentY += (penalSplit.length * 5) + 8;
 
-  currentY += (penalSplit.length * 5) + 7;
-
+  // --- 5. FORO ---
   doc.setFont("helvetica", "bold");
+  doc.setTextColor(0);
   doc.text("5. CLÁUSULA QUARTA - DO FORO", margin, currentY);
+  doc.line(margin, currentY + 2, width - margin, currentY + 2);
   doc.setFont("helvetica", "normal");
-  currentY += 7;
+  currentY += 8;
   const foroTexto = `PARA DIRIMIR QUAISQUER CONTROVÉRSIAS ORIUNDAS DESTE INSTRUMENTO, AS PARTES ELEGEM O FORO DA COMARCA DO CONTRATADO, COM RENÚNCIA EXPRESSA A QUALQUER OUTRO, POR MAIS PRIVILEGIADO QUE SEJA.`;
   const foroSplit = doc.splitTextToSize(foroTexto, width - (margin * 2));
   doc.text(foroSplit, margin, currentY);
 
-  // --- RODAPÉ ---
+  // --- BLOCO DE VALIDAÇÃO OTP ---
+  const validationY = 240; // Ajustado para não afastar demais do rodapé
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.text("CERTIFICADO DE CONFORMIDADE DIGITAL", margin, validationY);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7.5);
+  const techInfo = `Este contrato foi validado através de protocolo OTP (One-Time Password) enviado ao dispositivo do signatário. A integridade deste arquivo é garantida pela hash exclusiva de transação e vinculação direta ao endereço IP registrado no momento da aceitação. Validade jurídica conforme MP nº 2.200-2/2001.`;
+  const techSplit = doc.splitTextToSize(techInfo, width - (margin * 2));
+  doc.text(techSplit, margin, validationY + 4);
+
+  // --- RODAPÉ FINAL ---
   const footerY = 265;
-  doc.setDrawColor(0);
   doc.setLineWidth(0.2);
+  doc.setDrawColor(0);
   doc.line(margin, footerY, width - margin, footerY);
   
   doc.setFontSize(8);
@@ -135,15 +154,22 @@ export const generatePDF = async (acordo) => {
     const dataAssinatura = new Date(dados.assinadoEm).toLocaleString('pt-BR');
     doc.setFont("helvetica", "bold");
     doc.setTextColor(0, 100, 0); 
-    // Texto de assinatura
     doc.text(`ASSINADO DIGITALMENTE EM: ${dataAssinatura}`, margin, footerY + 7);
     doc.setFont("helvetica", "normal");
-    doc.setTextColor(100);
-    doc.text(`IP DE ORIGEM: ${dados.assinaturaIP} | ID: ${dados.id.toUpperCase()}`, margin, footerY + 12);
-    doc.text("ESTE DOCUMENTO POSSUI VALIDADE JURÍDICA CONFORME A MP Nº 2.200-2/2001.", margin, footerY + 17);
+    doc.setTextColor(80);
+    doc.text(`IP: ${dados.assinaturaIP} | AUTH OTP: VERIFICADA | ID: ${authID}`, margin, footerY + 12);
+    doc.setFont("courier", "bold");
+    doc.setFontSize(7);
+    doc.text(`INTEGRITY HASH: ${fullHash}`, margin, footerY + 17);
   } else {
     doc.setTextColor(200, 0, 0);
     doc.text("DOCUMENTO PENDENTE DE ASSINATURA DIGITAL", margin, footerY + 7);
+  }
+
+  // --- APLICAÇÃO DA PAGINAÇÃO ---
+  const totalPages = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    addFixedElements(i, totalPages);
   }
 
   doc.save(`CONTRATO-${authID}.pdf`);

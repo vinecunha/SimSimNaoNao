@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { Image as ImageIcon, Loader2, Camera, Trash2 } from 'lucide-react';
+import { ImageIcon, Loader2, Camera, Trash2, Plus } from 'lucide-react';
 
 export default function ContractLogoUpload({ acordo, onUploadSuccess, onRemoveLogo }) {
   const [uploading, setUploading] = useState(false);
@@ -9,6 +9,12 @@ export default function ContractLogoUpload({ acordo, onUploadSuccess, onRemoveLo
   const handleUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
+
+    // Validação básica de tamanho (ex: 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      alert("A imagem deve ter no máximo 2MB");
+      return;
+    }
 
     try {
       setUploading(true);
@@ -32,8 +38,10 @@ export default function ContractLogoUpload({ acordo, onUploadSuccess, onRemoveLo
         .eq('id', acordo.id);
 
       if (updateError) throw updateError;
+      
       onUploadSuccess(acordo.id, publicUrl);
     } catch (error) {
+      console.error(error);
       alert("Erro ao enviar imagem.");
     } finally {
       setUploading(false);
@@ -41,31 +49,69 @@ export default function ContractLogoUpload({ acordo, onUploadSuccess, onRemoveLo
   };
 
   return (
-    <div className="relative group shrink-0">
-      <input type="file" ref={fileInputRef} onChange={handleUpload} className="hidden" accept="image/*" />
-      <div className="w-16 h-16 md:w-20 md:h-20 bg-gray-50 rounded-2xl border-[3px] border-black flex items-center justify-center overflow-hidden shadow-[4px_4px_0px_0px_black] group-hover:border-orange-500 transition-colors">
+    <div className="relative inline-block">
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        onChange={handleUpload} 
+        className="hidden" 
+        accept="image/*" 
+      />
+
+      {/* Container Principal da Logo */}
+      <div 
+        onClick={() => !acordo.emissor_logo && fileInputRef.current.click()}
+        className={`
+          relative w-20 h-20 md:w-24 md:h-24 
+          rounded-2xl border-[3px] border-black 
+          flex items-center justify-center 
+          overflow-hidden transition-all duration-200
+          ${!acordo.emissor_logo ? 'bg-gray-100 cursor-pointer hover:bg-orange-50 hover:border-orange-500 shadow-[4px_4px_0px_0px_black]' : 'bg-white shadow-[6px_6px_0px_0px_black]'}
+        `}
+      >
         {acordo.emissor_logo ? (
-          <img src={acordo.emissor_logo} alt="Logo" className="w-full h-full object-contain p-1" />
+          <div className="relative w-full h-full group">
+            <img 
+              src={acordo.emissor_logo} 
+              alt="Logo do Emissor" 
+              className="w-full h-full object-contain p-2"
+            />
+            {/* Overlay de Hover quando já tem logo */}
+            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+               <button 
+                onClick={(e) => { e.stopPropagation(); fileInputRef.current.click(); }}
+                className="bg-white p-1.5 rounded-lg text-black hover:bg-orange-500 hover:text-white transition-colors"
+               >
+                 <Camera size={16} />
+               </button>
+               <button 
+                onClick={(e) => { e.stopPropagation(); onRemoveLogo(acordo.id); }}
+                className="bg-white p-1.5 rounded-lg text-red-600 hover:bg-red-600 hover:text-white transition-colors"
+               >
+                 <Trash2 size={16} />
+               </button>
+            </div>
+          </div>
         ) : (
-          <ImageIcon className="text-gray-200" size={32} />
+          <div className="flex flex-col items-center gap-1 text-gray-400 group-hover:text-orange-500">
+            <Plus size={24} className="mb-0.5" />
+            <span className="text-[10px] font-bold uppercase tracking-tighter">Sua Logo</span>
+          </div>
+        )}
+
+        {/* Loading State Overlay */}
+        {uploading && (
+          <div className="absolute inset-0 bg-white/80 backdrop-blur-[1px] flex items-center justify-center z-20">
+            <Loader2 className="animate-spin text-orange-600" size={24} />
+          </div>
         )}
       </div>
-      
-      <div className="absolute -top-2 -right-2 flex flex-col gap-1">
-        <button 
-          onClick={() => fileInputRef.current.click()}
-          className="bg-black text-white p-2 rounded-lg border-2 border-white shadow-lg hover:bg-orange-500 transition-all active:scale-90"
-        >
-          {uploading ? <Loader2 size={12} className="animate-spin" /> : <Camera size={12} />}
-        </button>
-        {acordo.emissor_logo && (
-          <button 
-            onClick={() => onRemoveLogo(acordo.id)}
-            className="bg-white text-red-600 p-2 rounded-lg border-2 border-red-600 shadow-lg hover:bg-red-50 transition-all active:scale-90"
-          >
-            <Trash2 size={12} />
-          </button>
-        )}
+
+      {/* Tag de Identificação opcional */}
+      <div className="mt-3 flex justify-center">
+        <span className="text-[7px] font-black uppercase bg-black text-white px-2 py-0.5 rounded-full">
+          Identidade Visual
+        </span>
       </div>
     </div>
   );
