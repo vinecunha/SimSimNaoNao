@@ -1,0 +1,14 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    /* Força o navegador a computar cores em srgb para o html2canvas entender */
+    color-interpolation-filters: sRGB;
+  }
+}
+
+/* Se estiver usando DaisyUI ou temas que usent oklch, force o reset para o canvas */
+#contract-capture-area * {
+  color-scheme: light;
+  --oklch-none: 0 0 0; /* Reset de variáveis oklch se existirem */
+}
